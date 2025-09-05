@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Equation Scanner & Solver</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Equation Scanner & Solver</h1>
+      <p>Scan or type expressions for <code>I1(t)</code>, <code>I2(t)</code>, <code>I3(t)</code> and a main equation. Evaluate numerically with custom integrate and sum helpers.</p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>Variables</h2>
+        <p>Add scalar variables used by your expressions (e.g., <code>alpha</code>, <code>beta1</code>, <code>Q</code>, <code>R</code>, <code>theta</code>, <code>t1</code>, <code>mu</code>, <code>T</code>, <code>b</code>, <code>D0</code>).</p>
+        <div class="vars">
+          <table id="varsTable">
+            <thead>
+              <tr><th>Name</th><th>Value</th><th>Scan</th><th></th></tr>
+            </thead>
+            <tbody id="varsBody">
+              <tr>
+                <td><input class="var-name" placeholder="R" value="R" /></td>
+                <td><input class="var-value" placeholder="e.g. 0.5" /></td>
+                <td><button class="scan-btn" data-target="prev">📷</button></td>
+                <td><button class="row-del">✖</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button id="addVar">+ Add variable</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Functions I1(t), I2(t), I3(t)</h2>
+        <p>Enter as math expressions in <code>t</code>. You may use <code>integrate(t -> f(t), a, b)</code> and <code>sumN(n -> g(n), a, b)</code>. Use <code>exp(x)</code> for e<sup>x</sup>.</p>
+        <div class="row">
+          <label for="i1">I1(t)</label>
+          <div class="input-line">
+            <textarea id="i1" placeholder="Example: D0 * exp(-alpha1 * t^beta1) + Q * exp(-alpha1 * t^beta1)"></textarea>
+            <button class="scan-btn" data-target="i1">📷</button>
+          </div>
+          <div class="preview" id="i1Preview"></div>
+        </div>
+
+        <div class="row">
+          <label for="i2">I2(t)</label>
+          <div class="input-line">
+            <textarea id="i2" placeholder="Expression in t"></textarea>
+            <button class="scan-btn" data-target="i2">📷</button>
+          </div>
+          <div class="preview" id="i2Preview"></div>
+        </div>
+
+        <div class="row">
+          <label for="i3">I3(t)</label>
+          <div class="input-line">
+            <textarea id="i3" placeholder="Expression in t"></textarea>
+            <button class="scan-btn" data-target="i3">📷</button>
+          </div>
+          <div class="preview" id="i3Preview"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Main equation</h2>
+        <p>Use <code>I1(t)</code>, <code>I2(t)</code>, <code>I3(t)</code>, constants, and helpers. Example:
+          <code>integrate(t -> I1(t) * exp(-R*t), theta, t1) + integrate(t -> I2(t) * exp(-R*t), t1, mu) + integrate(t -> I3(t) * exp(-R*t), mu, T)</code>
+        </p>
+        <div class="row">
+          <label for="mainEq">Equation</label>
+          <div class="input-line">
+            <textarea id="mainEq" placeholder="Type or scan the main equation"></textarea>
+            <button class="scan-btn" data-target="mainEq">📷</button>
+          </div>
+          <div class="preview" id="mainPreview"></div>
+        </div>
+
+        <div class="actions">
+          <button id="evaluate">Evaluate</button>
+          <button id="clearAll">Clear</button>
+        </div>
+        <div class="result" id="result"></div>
+      </section>
+    </main>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Scan with Camera</h3>
+          <button id="closeModal">✖</button>
+        </div>
+        <div class="modal-body">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas" class="hidden"></canvas>
+        </div>
+        <div class="modal-footer">
+          <button id="capture">Capture</button>
+          <button id="recognize">Recognize</button>
+          <span id="ocrStatus"></span>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.2/lib/browser/math.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-U8jW6HIX28n1nUBFrG+LFYQmZVRwIuRDXHkG9w7FAnbP7J4RZPLu4K6YwDqZBfZP" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+    <script src="/app.js"></script>
+  </body>
+  </html>
+
