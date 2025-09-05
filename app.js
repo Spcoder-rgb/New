@@ -82,6 +82,7 @@ function buildScope() {
     exp: Math.exp,
     integrate: (fn, a, b) => integrateNumeric(fn, Number(a), Number(b)),
     sumN: (fn, a, b) => sumN(fn, Number(a), Number(b)),
+    SUM_MAX: 200,
   };
   // variables table
   qa('#varsBody tr').forEach((row) => {
@@ -436,6 +437,12 @@ function normalizeOcrText(text) {
   const superMap = { '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '⁻': '-' };
   t = t.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰⁻]/g, (m) => '^' + (superMap[m] || ''));
 
+  // Sums and integrals patterns to mathjs helpers
+  // Convert formats like \sum_{n=0}^{\infty} to sumN(n -> ..., 0, N)
+  t = t.replace(/sumN\s*\(\s*n\s*->/g, 'sumN(n ->');
+  // Replace infinity with a cap and comment-like marker
+  t = t.replace(/(sumN\(\s*n\s*->[^,]*,\s*\d+\s*,\s*)(Infinity)(\s*\))/g, '$1SUM_MAX$3');
+
   t = t.replace(/\s+/g, ' ').trim();
   return t;
 }
@@ -450,6 +457,12 @@ function sanitizeExpression(expr) {
   t = t.replace(/\^\s*([A-Za-z0-9]+)/g, '^($1)');
   // convert I1[t] style to I1(t)
   t = t.replace(/([A-Za-z_]\w*)\s*\[\s*([A-Za-z_]\w*)\s*\]/g, '$1($2)');
+  // convert subscripts like alpha_1 or beta_1 to alpha1 (mathjs variable)
+  t = t.replace(/([A-Za-z]+)_([0-9]+)/g, '$1$2');
+  // map greek words to ascii symbols if present (e.g., alpha -> alpha)
+  // already handled in OCR normalization
+  // convert integral latex-like to integrate helper if found: \int_a^b f(t) dt -> integrate(t -> f(t), a, b)
+  t = t.replace(/\\int\s*([^\^]*)\^([^\s]+)\s*([^d]+)d\s*[A-Za-z]/g, (m, a, b, body) => `integrate(t -> ${body.trim()}, ${a.trim()}, ${b.trim()})`);
   // replace exp-notation e^-x with exp(-x)
   t = t.replace(/e\s*\^\s*\(/g, 'exp(');
   // ensure arrow spacing: t-> to t ->
