@@ -40,7 +40,14 @@ const math = window.math;
 // numeric integration via adaptive Simpson's rule (simple implementation)
 function integrateNumeric(fn, a, b, maxDepth = 12, eps = 1e-7) {
   const f = (x) => {
-    try { return Number(fn(x)); } catch { return NaN; }
+    try {
+      const y = fn(x);
+      if (typeof y === 'number') return y;
+      if (y && typeof y.valueOf === 'function') return Number(y.valueOf());
+      return Number(y);
+    } catch {
+      return NaN;
+    }
   };
   function simpson(f, a, b) {
     const c = (a + b) / 2;
@@ -90,15 +97,22 @@ function buildScope() {
 function buildFunctionOfT(expr, scopeBase) {
   if (!expr) return (t) => NaN;
   const scope = { ...scopeBase };
-  // helpers to allow lambdas like t -> ...
-  // We support integrate(t -> f(t), a, b) by passing a function
-  scope["t"] = 0; // placeholder
   try {
-    // Replace lambda arrow for math.js: (t) -> ... becomes function (t) ...
-    const transformed = expr.replace(/(\b[A-Za-z_]\w*\b)\s*->/g, 'function($1) ');
-    const node = math.parse(transformed);
+    // Build a mathjs lambda t -> (expr)
+    const wrapped = `t -> (${expr})`;
+    const node = math.parse(wrapped);
     const code = node.compile();
-    return (t) => code.evaluate({ ...scope, t });
+    const fn = code.evaluate(scope);
+    return (t) => {
+      try {
+        const y = fn(t);
+        if (typeof y === 'number') return y;
+        if (y && typeof y.valueOf === 'function') return Number(y.valueOf());
+        return Number(y);
+      } catch {
+        return NaN;
+      }
+    };
   } catch (e) {
     console.error('Function parse error', e);
     return (t) => NaN;
@@ -124,8 +138,7 @@ function evaluateAll() {
 
   let value;
   try {
-    const transformed = mainExpr.replace(/(\b[A-Za-z_]\w*\b)\s*->/g, 'function($1) ');
-    const node = math.parse(transformed);
+    const node = math.parse(mainExpr);
     const code = node.compile();
     value = code.evaluate(scope);
   } catch (e) {
