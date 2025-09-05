@@ -243,7 +243,17 @@ setInterval(saveState, 1000);
 // Camera and OCR
 async function ensureWorker() {
   if (state.worker) return state.worker;
-  state.worker = Tesseract.createWorker();
+  state.worker = await Tesseract.createWorker({
+    langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+    logger: () => {},
+  });
+  await state.worker.loadLanguage('eng+equ');
+  await state.worker.initialize('eng+equ');
+  await state.worker.setParameters({
+    preserve_interword_spaces: '1',
+    tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
+    user_defined_dpi: '300',
+  });
   return state.worker;
 }
 
@@ -282,6 +292,7 @@ q('#capture').addEventListener('click', () => {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   ctx.drawImage(video, 0, 0);
+  applyPreprocess(canvas);
   canvas.classList.remove('hidden');
   canvas.toBlob((blob) => (state.capturedImageBlob = blob));
 });
@@ -294,8 +305,8 @@ q('#recognize').addEventListener('click', async () => {
   q('#ocrStatus').textContent = 'Recognizing...';
   const worker = await ensureWorker();
   try {
-    const { data } = await worker.recognize(state.capturedImageBlob, 'eng');
-    const text = (data.text || '').replace(/\s+/g, ' ').trim();
+    const { data } = await worker.recognize(state.capturedImageBlob);
+    const text = normalizeOcrText(data.text || '');
     injectOcrText(text);
     q('#ocrStatus').textContent = 'Done';
     updatePreviews();
@@ -317,6 +328,7 @@ q('#fileInput').addEventListener('change', async (e) => {
     canvas.width = img.width;
     canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
+    applyPreprocess(canvas);
     canvas.classList.remove('hidden');
   };
   img.src = URL.createObjectURL(file);
@@ -363,4 +375,50 @@ q('#symbolPalette')?.addEventListener('click', (e) => {
   target.setSelectionRange(cursor, cursor);
   updatePreviews();
 });
+
+// Simple preprocessing: grayscale + contrast + threshold
+function applyPreprocess(canvas) {
+  const ctx = canvas.getContext('2d');
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = img.data;
+  // grayscale + contrast
+  const contrast = 1.2; // >1 increases contrast
+  const threshold = 180; // 0-255
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    let y = 0.2126 * r + 0.7152 * g + 0.0722 * b; // luma
+    y = (y - 128) * contrast + 128;
+    const v = y > threshold ? 255 : 0;
+    data[i] = data[i + 1] = data[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// Normalize OCR output into ASCII-friendly math text
+function normalizeOcrText(text) {
+  if (!text) return '';
+  let t = text
+    .replace(/[\t\r]+/g, ' ')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2212]/g, '-')
+    .replace(/[\u00B7\u22C5\u2022]/g, '*')
+    .replace(/[\u2264]/g, '<=')
+    .replace(/[\u2265]/g, '>=')
+    .replace(/[\u2260]/g, '!=')
+    .replace(/[\u2248]/g, 'approx')
+    .replace(/[\u2211]/g, 'sumN')
+    .replace(/[\u221E]/g, 'Infinity');
+
+  const greekMap = {
+    'π': 'pi', 'α': 'alpha', 'β': 'beta', 'γ': 'gamma', 'θ': 'theta', 'μ': 'mu', 'λ': 'lambda', 'σ': 'sigma', 'Δ': 'Delta'
+  };
+  t = t.replace(/[παβγθμλσΔ]/g, (m) => greekMap[m] || m);
+
+  const superMap = { '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '⁻': '-' };
+  t = t.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰⁻]/g, (m) => '^' + (superMap[m] || ''));
+
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}
 
