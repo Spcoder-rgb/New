@@ -4,6 +4,7 @@ const state = {
   stream: null,
   capturedImageBlob: null,
   worker: null,
+  lastFocused: null,
 };
 
 // DOM references
@@ -149,6 +150,10 @@ function updatePreviews() {
 }
 
 qa('textarea').forEach((el) => el.addEventListener('input', updatePreviews));
+// track focus for palette insertion
+document.addEventListener('focusin', (e) => {
+  if (e.target.matches('textarea, input')) state.lastFocused = e.target;
+});
 updatePreviews();
 
 // Vars table controls
@@ -176,6 +181,51 @@ q('#clearAll').addEventListener('click', () => {
   updatePreviews();
   q('#result').textContent = '';
 });
+q('#copyResult').addEventListener('click', async () => {
+  const text = q('#result').textContent || '';
+  try { await navigator.clipboard.writeText(text); } catch {}
+});
+
+// Persist inputs
+function saveState() {
+  const vars = qa('#varsBody tr').map((row) => ({
+    name: row.querySelector('.var-name')?.value || '',
+    value: row.querySelector('.var-value')?.value || '',
+  }));
+  const payload = {
+    vars,
+    i1: q('#i1').value,
+    i2: q('#i2').value,
+    i3: q('#i3').value,
+    main: q('#mainEq').value,
+  };
+  localStorage.setItem('eqscan_state', JSON.stringify(payload));
+}
+function loadState() {
+  const raw = localStorage.getItem('eqscan_state');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.vars)) {
+      q('#varsBody').innerHTML = '';
+      data.vars.forEach((v) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input class="var-name" placeholder="name" value="${v.name || ''}" /></td>
+          <td><input class="var-value" placeholder="value" value="${v.value || ''}" /></td>
+          <td><button class="scan-btn" data-target="prev">📷</button></td>
+          <td><button class="row-del">✖</button></td>
+        `;
+        q('#varsBody').appendChild(tr);
+      });
+    }
+    if (typeof data.i1 === 'string') q('#i1').value = data.i1;
+    if (typeof data.i2 === 'string') q('#i2').value = data.i2;
+    if (typeof data.i3 === 'string') q('#i3').value = data.i3;
+    if (typeof data.main === 'string') q('#mainEq').value = data.main;
+  } catch {}
+}
+setInterval(saveState, 1000);
 
 // Camera and OCR
 async function ensureWorker() {
@@ -241,6 +291,24 @@ q('#recognize').addEventListener('click', async () => {
   }
 });
 
+// Gallery upload -> OCR
+q('#fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  state.capturedImageBlob = file;
+  q('#ocrStatus').textContent = 'Image loaded from gallery.';
+  const img = new Image();
+  img.onload = () => {
+    const canvas = q('#canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    canvas.classList.remove('hidden');
+  };
+  img.src = URL.createObjectURL(file);
+});
+
 function injectOcrText(text) {
   if (!state.targetInputId) return;
   if (state.targetInputId === 'prev') {
@@ -257,10 +325,29 @@ function injectOcrText(text) {
 
 // Initialize with a simple example so users see the format
 window.addEventListener('DOMContentLoaded', () => {
-  q('#i1').value = 'D0 * exp(-alpha1 * t^beta1) + Q * exp(-alpha1 * t^beta1)';
-  q('#i2').value = 'D0 * exp(-alpha1 * t^beta1) + Q * (exp(-alpha1 * t^beta1) - alpha)';
-  q('#i3').value = '(b*mu - D0) * exp(-alpha1 * t^beta1) - b * exp(-alpha1 * t^(beta1+2)) + Q * exp(-alpha1 * t^beta1) * (1 - alpha * exp(-alpha1 * mu^beta1))';
-  q('#mainEq').value = 'integrate(t -> I1(t) * exp(-R*t), theta, t1) + integrate(t -> I2(t) * exp(-R*t), t1, mu) + integrate(t -> I3(t) * exp(-R*t), mu, T)';
+  loadState();
+  if (!q('#i1').value) q('#i1').value = 'D0 * exp(-alpha1 * t^beta1) + Q * exp(-alpha1 * t^beta1)';
+  if (!q('#i2').value) q('#i2').value = 'D0 * exp(-alpha1 * t^beta1) + Q * (exp(-alpha1 * t^beta1) - alpha)';
+  if (!q('#i3').value) q('#i3').value = '(b*mu - D0) * exp(-alpha1 * t^beta1) - b * exp(-alpha1 * t^(beta1+2)) + Q * exp(-alpha1 * t^beta1) * (1 - alpha * exp(-alpha1 * mu^beta1))';
+  if (!q('#mainEq').value) q('#mainEq').value = 'integrate(t -> I1(t) * exp(-R*t), theta, t1) + integrate(t -> I2(t) * exp(-R*t), t1, mu) + integrate(t -> I3(t) * exp(-R*t), mu, T)';
+  updatePreviews();
+});
+
+// Symbol palette insertion
+q('#symbolPalette')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-insert]');
+  if (!btn) return;
+  const insert = btn.getAttribute('data-insert');
+  const target = state.lastFocused || q('#mainEq');
+  if (!target) return;
+  const start = target.selectionStart ?? target.value.length;
+  const end = target.selectionEnd ?? target.value.length;
+  const before = target.value.slice(0, start);
+  const after = target.value.slice(end);
+  target.value = `${before}${insert}${after}`;
+  const cursor = start + insert.length;
+  target.focus();
+  target.setSelectionRange(cursor, cursor);
   updatePreviews();
 });
 

@@ -7,13 +7,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
     <style>
 :root {
-  --bg: #0b0f14;
-  --panel: #111827;
+  --bg: #f4f7fb;
+  --panel: #ffffff;
   --muted: #6b7280;
-  --text: #e5e7eb;
-  --accent: #22c55e;
-  --danger: #ef4444;
-  --border: #1f2937;
+  --text: #111827;
+  --accent: #2563eb;
+  --danger: #b91c1c;
+  --border: #e5e7eb;
 }
 
 * { box-sizing: border-box; }
@@ -22,25 +22,25 @@ body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   color: var(--text);
-  background: linear-gradient(180deg, #0b0f14, #0b0f14 200px, #0a0e13);
+  background: var(--bg);
 }
 
-.app-header { padding: 24px; border-bottom: 1px solid var(--border); }
+.app-header { padding: 24px; border-bottom: 1px solid var(--border); background: #f8fafc; }
 .app-header h1 { margin: 0 0 8px; font-size: 24px; }
 .app-header p { margin: 0; color: var(--muted); }
 
 .container { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .card h2 { margin: 0 0 8px; font-size: 18px; }
 .card p { margin: 6px 0 12px; color: var(--muted); }
 
 .row { margin-bottom: 16px; }
-label { display: block; margin-bottom: 6px; color: #cbd5e1; }
+label { display: block; margin-bottom: 6px; color: #334155; }
 .input-line { display: flex; gap: 8px; align-items: stretch; }
 textarea, input[type="text"], input[type="number"] {
   width: 100%;
   padding: 10px 12px;
-  background: #0c1220;
+  background: #fff;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -48,41 +48,50 @@ textarea, input[type="text"], input[type="number"] {
 }
 textarea { min-height: 64px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
-.scan-btn { padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: #0d1322; color: var(--text); cursor: pointer; }
-.scan-btn:hover { background: #101a31; }
+.scan-btn { padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: #f1f5f9; color: var(--text); cursor: pointer; }
+.scan-btn:hover { background: #e2e8f0; }
 
-.preview { min-height: 28px; padding: 8px 10px; border-left: 2px solid #1e293b; color: #d1d5db; }
+.preview { min-height: 28px; padding: 8px 10px; border-left: 2px solid #e5e7eb; color: #334155; }
 
 .actions { display: flex; gap: 12px; }
-button#evaluate { background: var(--accent); color: #052e16; border: 0; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-button#clearAll { background: #0d1322; color: #d1d5db; border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+button#evaluate { background: var(--accent); color: #fff; border: 0; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+button#clearAll { background: #f1f5f9; color: #111827; border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; cursor: pointer; }
+button#copyResult { background: #10b981; color: #fff; border: 0; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
 
-.result { margin-top: 12px; padding: 12px; background: #0c1220; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
+.result { margin-top: 12px; padding: 12px; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
 
 /* Vars table */
 .vars table { width: 100%; border-collapse: collapse; }
 .vars th, .vars td { border-bottom: 1px solid var(--border); padding: 8px; text-align: left; }
 .vars input { width: 100%; }
 .row-del { background: var(--danger); color: #fff; border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
-#addVar { margin-top: 10px; background: #0d1322; color: #d1d5db; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+#addVar { margin-top: 10px; background: #f1f5f9; color: #111827; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+
+/* Palette */
+.palette { display: flex; flex-wrap: wrap; gap: 8px; }
+.palette .katex { font-size: 18px; }
+.palette button { padding: 8px 10px; border: 1px solid var(--border); background: #fff; border-radius: 8px; cursor: pointer; }
+.palette button:hover { background: #f8fafc; }
 
 /* Modal */
-.modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.55); }
+.modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.15); }
 .hidden { display: none !important; }
-.modal-content { width: min(720px, 95vw); background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.modal-content { width: min(780px, 95vw); background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .modal-header, .modal-footer { padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
 .modal-footer { border-top: 1px solid var(--border); border-bottom: 0; }
 .modal-body { padding: 12px; display: grid; place-items: center; }
 video { width: 100%; border-radius: 10px; background: #000; }
 canvas { max-width: 100%; border-radius: 10px; }
-#capture, #recognize, #closeModal { background: #0d1322; color: #d1d5db; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+#capture, #recognize, #closeModal, .btn { background: #f1f5f9; color: #111827; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
 #ocrStatus { color: var(--muted); margin-left: 8px; }
+.modal-footer .left { display: flex; gap: 8px; align-items: center; }
+.modal-footer .right { display: flex; gap: 8px; align-items: center; }
     </style>
   </head>
   <body>
     <header class="app-header">
       <h1>Equation Scanner & Solver</h1>
-      <p>Scan or type expressions for <code>I1(t)</code>, <code>I2(t)</code>, <code>I3(t)</code> and a main equation. Evaluate numerically with custom integrate and sum helpers.</p>
+      <p>Scan from camera or gallery, or type with the on-screen symbols. Define <code>I1(t)</code>, <code>I2(t)</code>, <code>I3(t)</code>, then evaluate the main equation.</p>
     </header>
 
     <main class="container">
@@ -104,6 +113,43 @@ canvas { max-width: 100%; border-radius: 10px; }
             </tbody>
           </table>
           <button id="addVar">+ Add variable</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Symbols</h2>
+        <p>Tap to insert into the currently focused field.</p>
+        <div id="symbolPalette" class="palette">
+          <button data-insert="pi">π</button>
+          <button data-insert="alpha">α</button>
+          <button data-insert="beta">β</button>
+          <button data-insert="gamma">γ</button>
+          <button data-insert="theta">θ</button>
+          <button data-insert="mu">μ</button>
+          <button data-insert="lambda">λ</button>
+          <button data-insert="sigma">σ</button>
+          <button data-insert="Delta">Δ</button>
+          <button data-insert="sqrt( )">√</button>
+          <button data-insert="integrate(t -> f(t), a, b)">∫</button>
+          <button data-insert="sumN(n -> g(n), n0, n1)">∑</button>
+          <button data-insert="exp( )">eˣ</button>
+          <button data-insert="ln( )">ln</button>
+          <button data-insert="log( )">log</button>
+          <button data-insert="sin( )">sin</button>
+          <button data-insert="cos( )">cos</button>
+          <button data-insert="tan( )">tan</button>
+          <button data-insert="( )">( )</button>
+          <button data-insert="^">^</button>
+          <button data-insert="*">·</button>
+          <button data-insert="/">/</button>
+          <button data-insert="+">+</button>
+          <button data-insert="-">−</button>
+          <button data-insert="=">=</button>
+          <button data-insert="<=">≤</button>
+          <button data-insert=">=">≥</button>
+          <button data-insert="!=">≠</button>
+          <button data-insert="approx">≈</button>
+          <button data-insert="->">→</button>
         </div>
       </section>
 
@@ -155,6 +201,7 @@ canvas { max-width: 100%; border-radius: 10px; }
         <div class="actions">
           <button id="evaluate">Evaluate</button>
           <button id="clearAll">Clear</button>
+          <button id="copyResult">Copy result</button>
         </div>
         <div class="result" id="result"></div>
       </section>
@@ -172,9 +219,15 @@ canvas { max-width: 100%; border-radius: 10px; }
           <canvas id="canvas" class="hidden"></canvas>
         </div>
         <div class="modal-footer">
-          <button id="capture">Capture</button>
-          <button id="recognize">Recognize</button>
-          <span id="ocrStatus"></span>
+          <div class="left">
+            <button id="capture">Capture</button>
+            <label for="fileInput" class="btn">Upload image</label>
+            <input id="fileInput" type="file" accept="image/*" class="hidden" />
+          </div>
+          <div class="right">
+            <button id="recognize">Recognize</button>
+            <span id="ocrStatus"></span>
+          </div>
         </div>
       </div>
     </div>
