@@ -100,8 +100,9 @@ function buildFunctionOfT(expr, scopeBase) {
   if (!expr) return (t) => NaN;
   const scope = { ...scopeBase };
   try {
-    // Build a mathjs lambda t -> (expr)
-    const wrapped = `t -> (${expr})`;
+    // Sanitize OCR quirks and build a mathjs lambda t -> (expr)
+    const cleaned = sanitizeExpression(expr);
+    const wrapped = `t -> (${cleaned})`;
     const node = math.parse(wrapped);
     const code = node.compile();
     const fn = code.evaluate(scope);
@@ -140,7 +141,7 @@ function evaluateAll() {
 
   let value;
   try {
-    const node = math.parse(mainExpr);
+    const node = math.parse(sanitizeExpression(mainExpr));
     const code = node.compile();
     value = code.evaluate(scope);
   } catch (e) {
@@ -435,6 +436,27 @@ function normalizeOcrText(text) {
   const superMap = { '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '⁻': '-' };
   t = t.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰⁻]/g, (m) => '^' + (superMap[m] || ''));
 
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}
+
+// Additional expression sanitization for mathjs parsing
+function sanitizeExpression(expr) {
+  if (!expr) return '';
+  let t = expr;
+  // replace fancy minus and dot and division slashes
+  t = t.replace(/[\u2212\u2013\u2014]/g, '-').replace(/[\u00B7\u22C5\u2022]/g, '*').replace(/[\u2044]/g, '/');
+  // convert unicode superscripts handled earlier, ensure ^(...) is wrapped
+  t = t.replace(/\^\s*([A-Za-z0-9]+)/g, '^($1)');
+  // convert I1[t] style to I1(t)
+  t = t.replace(/([A-Za-z_]\w*)\s*\[\s*([A-Za-z_]\w*)\s*\]/g, '$1($2)');
+  // replace exp-notation e^-x with exp(-x)
+  t = t.replace(/e\s*\^\s*\(/g, 'exp(');
+  // ensure arrow spacing: t-> to t ->
+  t = t.replace(/(\b\w+)\s*->/g, '$1 ->');
+  // remove stray backslashes
+  t = t.replace(/\\+/g, '');
+  // collapse whitespace
   t = t.replace(/\s+/g, ' ').trim();
   return t;
 }
