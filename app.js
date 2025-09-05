@@ -419,9 +419,10 @@ function normalizeOcrText(text) {
   let t = text
     .replace(/[\t\r]+/g, ' ')
     .replace(/\u00A0/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/[\u2013\u2014]/g, '-')
     .replace(/[\u2212]/g, '-')
-    .replace(/[\u00B7\u22C5\u2022]/g, '*')
+    .replace(/[\u00B7\u22C5\u2022\u00D7\u2715]/g, '*')
     .replace(/[\u2264]/g, '<=')
     .replace(/[\u2265]/g, '>=')
     .replace(/[\u2260]/g, '!=')
@@ -436,6 +437,8 @@ function normalizeOcrText(text) {
 
   const superMap = { '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '⁻': '-' };
   t = t.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰⁻]/g, (m) => '^' + (superMap[m] || ''));
+  const subMap = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
+  t = t.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (m) => subMap[m] || '');
 
   // Sums and integrals patterns to mathjs helpers
   // Convert formats like \sum_{n=0}^{\infty} to sumN(n -> ..., 0, N)
