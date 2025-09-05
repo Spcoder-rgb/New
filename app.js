@@ -5,6 +5,8 @@ const state = {
   capturedImageBlob: null,
   worker: null,
   lastFocused: null,
+  provider: 'tesseract',
+  geminiKey: '',
 };
 
 // DOM references
@@ -303,10 +305,8 @@ q('#recognize').addEventListener('click', async () => {
     return;
   }
   q('#ocrStatus').textContent = 'Recognizing...';
-  const worker = await ensureWorker();
   try {
-    const { data } = await worker.recognize(state.capturedImageBlob);
-    const text = normalizeOcrText(data.text || '');
+    const text = await recognizeWithTimeout(state.provider);
     injectOcrText(text);
     q('#ocrStatus').textContent = 'Done';
     updatePreviews();
@@ -351,6 +351,13 @@ function injectOcrText(text) {
 // Initialize with a simple example so users see the format
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
+  // Load provider settings
+  state.provider = localStorage.getItem('eqscan_provider') || 'tesseract';
+  state.geminiKey = localStorage.getItem('eqscan_gemini_key') || '';
+  const provSel = q('#ocrProvider');
+  const keyInput = q('#geminiKey');
+  if (provSel) provSel.value = state.provider;
+  if (keyInput) keyInput.value = state.geminiKey;
   if (!q('#i1').value) q('#i1').value = 'D0 * exp(-alpha1 * t^beta1) + Q * exp(-alpha1 * t^beta1)';
   if (!q('#i2').value) q('#i2').value = 'D0 * exp(-alpha1 * t^beta1) + Q * (exp(-alpha1 * t^beta1) - alpha)';
   if (!q('#i3').value) q('#i3').value = '(b*mu - D0) * exp(-alpha1 * t^beta1) - b * exp(-alpha1 * t^(beta1+2)) + Q * exp(-alpha1 * t^beta1) * (1 - alpha * exp(-alpha1 * mu^beta1))';
@@ -374,6 +381,16 @@ q('#symbolPalette')?.addEventListener('click', (e) => {
   target.focus();
   target.setSelectionRange(cursor, cursor);
   updatePreviews();
+});
+
+// Provider UI
+q('#ocrProvider').addEventListener('change', (e) => {
+  state.provider = e.target.value;
+  localStorage.setItem('eqscan_provider', state.provider);
+});
+q('#geminiKey').addEventListener('input', (e) => {
+  state.geminiKey = e.target.value.trim();
+  localStorage.setItem('eqscan_gemini_key', state.geminiKey);
 });
 
 // Simple preprocessing: grayscale + contrast + threshold
@@ -420,5 +437,61 @@ function normalizeOcrText(text) {
 
   t = t.replace(/\s+/g, ' ').trim();
   return t;
+}
+
+// Recognizer with timeout and provider support
+async function recognizeWithTimeout(provider) {
+  const timeoutMs = 30000; // 30s hard timeout
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Recognition timeout')), timeoutMs));
+  if (provider === 'gemini') {
+    const work = recognizeGemini();
+    const text = await Promise.race([work, timeout]);
+    return normalizeOcrText(text);
+  } else {
+    const work = (async () => {
+      const worker = await ensureWorker();
+      const { data } = await worker.recognize(state.capturedImageBlob);
+      return data.text || '';
+    })();
+    const text = await Promise.race([work, timeout]);
+    return normalizeOcrText(text);
+  }
+}
+
+async function recognizeGemini() {
+  if (!state.geminiKey) throw new Error('Missing Gemini API key');
+  const api = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  const imageData = await blobToBase64(state.capturedImageBlob);
+  const prompt = 'Extract the mathematical expression from this image as plain text suitable for mathjs. Use ASCII operators, caret ^ for powers, exp() for exponentials, and write integrals as integrate(t -> <expr>, a, b) and sums as sumN(n -> <expr>, n0, n1). Output only the expression, no commentary.';
+  const body = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: state.capturedImageBlob.type || 'image/png', data: imageData } }
+      ]
+    }]
+  };
+  const url = `${api}?key=${encodeURIComponent(state.geminiKey)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Gemini error ${res.status}`);
+  const json = await res.json();
+  const text = json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join(' ') || '';
+  return text.trim();
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const result = reader.result.split(',')[1];
+      resolve(result);
+    };
+    reader.readAsDataURL(blob);
+  });
 }
 

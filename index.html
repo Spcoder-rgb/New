@@ -217,6 +217,15 @@ canvas { max-width: 100%; border-radius: 10px; }
         <div class="modal-body">
           <video id="video" autoplay playsinline></video>
           <canvas id="canvas" class="hidden"></canvas>
+          <div class="provider">
+            <label>Provider
+              <select id="ocrProvider">
+                <option value="tesseract">Tesseract (on-device)</option>
+                <option value="gemini">Google Gemini (API)</option>
+              </select>
+            </label>
+            <input id="geminiKey" type="password" placeholder="Gemini API Key" />
+          </div>
         </div>
         <div class="modal-footer">
           <div class="left">
