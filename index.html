@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Equation Scanner & Solver</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <style>
+:root {
+  --bg: #f8fbff;
+  --panel: #ffffff;
+  --muted: #64748b;
+  --text: #0f172a;
+  --accent: #6366f1;
+  --accent-2: #22c55e;
+  --danger: #ef4444;
+  --border: #e2e8f0;
+  --shadow: 0 6px 24px rgba(99,102,241,0.12), 0 2px 8px rgba(15,23,42,0.06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--text);
+  background: var(--bg);
+}
+
+.app-header { padding: 28px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #f1f5ff, #ffffff); }
+.app-header h1 { margin: 0 0 8px; font-size: 24px; }
+.app-header p { margin: 0; color: var(--muted); }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+.card h2 { margin: 0 0 8px; font-size: 18px; }
+.card p { margin: 6px 0 12px; color: var(--muted); }
+
+.row { margin-bottom: 16px; }
+label { display: block; margin-bottom: 6px; color: #334155; }
+.input-line { display: flex; gap: 8px; align-items: stretch; }
+textarea, input[type="text"], input[type="number"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+}
+textarea { min-height: 64px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+.scan-btn { padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: #f1f5f9; color: var(--text); cursor: pointer; }
+.scan-btn:hover { background: #e2e8f0; }
+
+.preview { min-height: 28px; padding: 8px 10px; border-left: 2px solid #e5e7eb; color: #334155; }
+
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+button#evaluate, button#evaluateGemini { background: var(--accent); color: #fff; border: 0; padding: 10px 16px; border-radius: 999px; cursor: pointer; font-weight: 700; box-shadow: 0 4px 14px rgba(99,102,241,0.25); }
+button#evaluateGemini { background: #0ea5e9; box-shadow: 0 4px 14px rgba(14,165,233,0.25); }
+button#clearAll { background: #f1f5f9; color: #111827; border: 1px solid var(--border); padding: 10px 16px; border-radius: 999px; cursor: pointer; }
+button#copyResult { background: var(--accent-2); color: #fff; border: 0; padding: 10px 16px; border-radius: 999px; cursor: pointer; box-shadow: 0 4px 14px rgba(34,197,94,0.25); }
+
+.result { margin-top: 12px; padding: 12px; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
+
+/* Vars table */
+.vars table { width: 100%; border-collapse: collapse; }
+.vars th, .vars td { border-bottom: 1px solid var(--border); padding: 8px; text-align: left; }
+.vars input { width: 100%; }
+.row-del { background: var(--danger); color: #fff; border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+#addVar { margin-top: 10px; background: #f1f5f9; color: #111827; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+
+/* Palette */
+.palette { display: flex; flex-wrap: wrap; gap: 8px; }
+.palette .katex { font-size: 18px; }
+.palette button { padding: 8px 10px; border: 1px solid var(--border); background: #fff; border-radius: 999px; cursor: pointer; }
+.palette button:hover { background: #f8fafc; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.15); }
+.hidden { display: none !important; }
+.modal-content { width: min(780px, 95vw); background: var(--panel); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
+.modal-header, .modal-footer { padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.modal-footer { border-top: 1px solid var(--border); border-bottom: 0; }
+.modal-body { padding: 12px; display: grid; place-items: center; }
+video { width: 100%; border-radius: 10px; background: #000; }
+canvas { max-width: 100%; border-radius: 10px; }
+#capture, #recognize, #closeModal, .btn { background: #f1f5f9; color: #111827; border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+#ocrStatus { color: var(--muted); margin-left: 8px; }
+.modal-footer .left { display: flex; gap: 8px; align-items: center; }
+.modal-footer .right { display: flex; gap: 8px; align-items: center; }
+/* Provider row */
+.provider { width: 100%; display: flex; gap: 8px; margin-top: 12px; }
+.provider select, .provider input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Equation Scanner & Solver</h1>
+      <p>Scan from camera or gallery, or type with the on-screen symbols. Define <code>I1(t)</code>, <code>I2(t)</code>, <code>I3(t)</code>, then evaluate the main equation.</p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>Variables</h2>
+        <p>Add scalar variables used by your expressions (e.g., <code>alpha</code>, <code>beta1</code>, <code>Q</code>, <code>R</code>, <code>theta</code>, <code>t1</code>, <code>mu</code>, <code>T</code>, <code>b</code>, <code>D0</code>).</p>
+        <div class="vars">
+          <table id="varsTable">
+            <thead>
+              <tr><th>Name</th><th>Value</th><th>Scan</th><th></th></tr>
+            </thead>
+            <tbody id="varsBody">
+              <tr>
+                <td><input class="var-name" placeholder="R" value="R" /></td>
+                <td><input class="var-value" placeholder="e.g. 0.5" /></td>
+                <td><button class="scan-btn" data-target="prev">📷</button></td>
+                <td><button class="row-del">✖</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button id="addVar">+ Add variable</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Symbols</h2>
+        <p>Tap to insert into the currently focused field.</p>
+        <div id="symbolPalette" class="palette">
+          <button data-insert="pi">π</button>
+          <button data-insert="alpha">α</button>
+          <button data-insert="beta">β</button>
+          <button data-insert="gamma">γ</button>
+          <button data-insert="theta">θ</button>
+          <button data-insert="mu">μ</button>
+          <button data-insert="lambda">λ</button>
+          <button data-insert="sigma">σ</button>
+          <button data-insert="Delta">Δ</button>
+          <button data-insert="sqrt( )">√</button>
+          <button data-insert="integrate(t -> f(t), a, b)">∫</button>
+          <button data-insert="sumN(n -> g(n), n0, n1)">∑</button>
+          <button data-insert="exp( )">eˣ</button>
+          <button data-insert="ln( )">ln</button>
+          <button data-insert="log( )">log</button>
+          <button data-insert="sin( )">sin</button>
+          <button data-insert="cos( )">cos</button>
+          <button data-insert="tan( )">tan</button>
+          <button data-insert="( )">( )</button>
+          <button data-insert="^">^</button>
+          <button data-insert="*">·</button>
+          <button data-insert="/">/</button>
+          <button data-insert="+">+</button>
+          <button data-insert="-">−</button>
+          <button data-insert="=">=</button>
+          <button data-insert="<=">≤</button>
+          <button data-insert=">=">≥</button>
+          <button data-insert="!=">≠</button>
+          <button data-insert="approx">≈</button>
+          <button data-insert="->">→</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Functions I1(t), I2(t), I3(t)</h2>
+        <p>Enter as math expressions in <code>t</code>. You may use <code>integrate(t -> f(t), a, b)</code> and <code>sumN(n -> g(n), a, b)</code>. Use <code>exp(x)</code> for e<sup>x</sup>.</p>
+        <div class="row">
+          <label for="i1">I1(t)</label>
+          <div class="input-line">
+            <textarea id="i1" placeholder="Example: D0 * exp(-alpha1 * t^beta1) + Q * exp(-alpha1 * t^beta1)"></textarea>
+            <button class="scan-btn" data-target="i1">📷</button>
+          </div>
+          <div class="preview" id="i1Preview"></div>
+        </div>
+
+        <div class="row">
+          <label for="i2">I2(t)</label>
+          <div class="input-line">
+            <textarea id="i2" placeholder="Expression in t"></textarea>
+            <button class="scan-btn" data-target="i2">📷</button>
+          </div>
+          <div class="preview" id="i2Preview"></div>
+        </div>
+
+        <div class="row">
+          <label for="i3">I3(t)</label>
+          <div class="input-line">
+            <textarea id="i3" placeholder="Expression in t"></textarea>
+            <button class="scan-btn" data-target="i3">📷</button>
+          </div>
+          <div class="preview" id="i3Preview"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Main equation</h2>
+        <p>Use <code>I1(t)</code>, <code>I2(t)</code>, <code>I3(t)</code>, constants, and helpers. Example:
+          <code>integrate(t -> I1(t) * exp(-R*t), theta, t1) + integrate(t -> I2(t) * exp(-R*t), t1, mu) + integrate(t -> I3(t) * exp(-R*t), mu, T)</code>
+        </p>
+        <div class="row">
+          <label for="mainEq">Equation</label>
+          <div class="input-line">
+            <textarea id="mainEq" placeholder="Type or scan the main equation"></textarea>
+            <button class="scan-btn" data-target="mainEq">📷</button>
+          </div>
+          <div class="preview" id="mainPreview"></div>
+        </div>
+
+        <div class="actions">
+          <button id="evaluate">Evaluate</button>
+          <button id="clearAll">Clear</button>
+          <button id="copyResult">Copy result</button>
+        </div>
+        <div class="result" id="result"></div>
+      </section>
+    </main>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Scan with Camera</h3>
+          <button id="closeModal">✖</button>
+        </div>
+        <div class="modal-body">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas" class="hidden"></canvas>
+          <div class="provider">
+            <label>Provider
+              <select id="ocrProvider">
+                <option value="tesseract">Tesseract (on-device)</option>
+                <option value="gemini">Google Gemini (API)</option>
+              </select>
+            </label>
+            <input id="geminiKey" type="password" placeholder="Gemini API Key" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="left">
+            <button id="capture">Capture</button>
+            <label for="fileInput" class="btn">Upload image</label>
+            <input id="fileInput" type="file" accept="image/*" class="hidden" />
+          </div>
+          <div class="right">
+            <button id="recognize">Recognize</button>
+            <span id="ocrStatus"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.2/lib/browser/math.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-U8jW6HIX28n1nUBFrG+LFYQmZVRwIuRDXHkG9w7FAnbP7J4RZPLu4K6YwDqZBfZP" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+  </html>
+
