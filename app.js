@@ -212,7 +212,7 @@ async function evaluateWithGemini() {
   const payload = buildGeminiSolvePayload();
   q('#result').textContent = 'Solving with Gemini...';
   try {
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(state.geminiKey), {
+    const res = await fetchWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(state.geminiKey), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -233,6 +233,25 @@ async function evaluateWithGemini() {
     }
   } catch (e) {
     q('#result').innerHTML = `<span style="color:#b91c1c">Gemini solve error: ${e.message}</span>`;
+  }
+}
+
+// fetch with retry/backoff for transient 5xx/429
+async function fetchWithRetry(url, options, retries = 3, baseDelayMs = 800) {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await fetch(url, options);
+      if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
+        if (attempt < retries) throw new Error('retryable');
+      }
+      return res;
+    } catch (err) {
+      attempt++;
+      if (attempt > retries) throw new Error('Gemini error after retries');
+      const wait = baseDelayMs * Math.pow(2, attempt - 1);
+      await new Promise((r) => setTimeout(r, wait));
+    }
   }
 }
 
