@@ -227,7 +227,9 @@ async function evaluateWithGemini() {
     if (parsed && typeof parsed.result === 'number') {
       q('#result').textContent = `Gemini result: ${parsed.result}`;
     } else {
-      q('#result').innerHTML = `<span style="color:#b91c1c">Unexpected response. Raw:</span> ${text}`;
+      // Fallback to local evaluation if JSON invalid or NaN
+      q('#result').innerHTML = `<span style="color:#b91c1c">Unexpected response. Trying local evaluation...</span>`;
+      setTimeout(() => evaluateAll(), 50);
     }
   } catch (e) {
     q('#result').innerHTML = `<span style="color:#b91c1c">Gemini solve error: ${e.message}</span>`;
@@ -253,15 +255,19 @@ function buildGeminiSolvePayload() {
 }
 
 function buildGeminiSolvePrompt(p) {
-  return `You are a precise math assistant. Evaluate the numeric value of the following expression using the given definitions and variables. Use the math semantics: exp(x) for e^x; integrate(f, a, b) means numeric integral of f(t) from a to b, where f is a lambda t -> ...; sumN(g, a, b) is finite integer sum from a to b inclusive. If the sum upper bound is the word SUM_MAX, treat it as 200. Return ONLY compact JSON with fields {"result": number}. No explanation.\n\nVariables (JSON):\n${JSON.stringify(p.vars)}\n\nDefinitions:\nI1(t) = ${p.i1}\nI2(t) = ${p.i2}\nI3(t) = ${p.i3}\n\nMain: ${p.main}`;
+  return `You are a precise math assistant. Evaluate the numeric value of the main expression using the given definitions and variables. Semantics: exp(x)=e^x; integrate(f, a, b) is a numeric integral of f(t) from a to b, where f is lambda t -> ...; sumN(g, a, b) is a finite integer sum from a to b inclusive. If upper bound is SUM_MAX, use 200. Never return Infinity or NaN; if computation fails, approximate carefully and return a finite number. Output ONLY raw JSON (no fences) exactly like {"result": 123.456}.\n\nVariables JSON:\n${JSON.stringify(p.vars)}\n\nDefinitions:\nI1(t) = ${p.i1}\nI2(t) = ${p.i2}\nI3(t) = ${p.i3}\n\nMain: ${p.main}`;
 }
 
 function parseGeminiSolveJson(text) {
+  // strip code fences if present
+  const stripped = text.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
   // try to extract JSON from the response
-  const match = text.match(/\{[\s\S]*\}/);
+  const match = stripped.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try {
-    return JSON.parse(match[0]);
+    const obj = JSON.parse(match[0]);
+    if (typeof obj.result === 'number' && Number.isFinite(obj.result)) return obj;
+    return null;
   } catch {
     return null;
   }
