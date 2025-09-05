@@ -191,8 +191,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-q('#evaluate').addEventListener('click', evaluateAll);
-q('#evaluateGemini').addEventListener('click', evaluateWithGemini);
+q('#evaluate').addEventListener('click', evaluateWithGemini);
 q('#clearAll').addEventListener('click', () => {
   qa('textarea').forEach((t) => (t.value = ''));
   qa('#varsBody .var-value').forEach((i) => (i.value = ''));
