@@ -192,6 +192,7 @@ document.addEventListener('click', (e) => {
 });
 
 q('#evaluate').addEventListener('click', evaluateAll);
+q('#evaluateGemini').addEventListener('click', evaluateWithGemini);
 q('#clearAll').addEventListener('click', () => {
   qa('textarea').forEach((t) => (t.value = ''));
   qa('#varsBody .var-value').forEach((i) => (i.value = ''));
@@ -202,6 +203,69 @@ q('#copyResult').addEventListener('click', async () => {
   const text = q('#result').textContent || '';
   try { await navigator.clipboard.writeText(text); } catch {}
 });
+
+async function evaluateWithGemini() {
+  if (!state.geminiKey) {
+    q('#result').innerHTML = '<span style="color:#b91c1c">Set Gemini API key in the Scan modal first.</span>';
+    return;
+  }
+  const payload = buildGeminiSolvePayload();
+  q('#result').textContent = 'Solving with Gemini...';
+  try {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(state.geminiKey), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildGeminiSolvePrompt(payload) }] }],
+        generationConfig: { temperature: 0 }
+      })
+    });
+    if (!res.ok) throw new Error('Gemini error ' + res.status);
+    const json = await res.json();
+    const text = json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join(' ') || '';
+    const parsed = parseGeminiSolveJson(text);
+    if (parsed && typeof parsed.result === 'number') {
+      q('#result').textContent = `Gemini result: ${parsed.result}`;
+    } else {
+      q('#result').innerHTML = `<span style="color:#b91c1c">Unexpected response. Raw:</span> ${text}`;
+    }
+  } catch (e) {
+    q('#result').innerHTML = `<span style="color:#b91c1c">Gemini solve error: ${e.message}</span>`;
+  }
+}
+
+function buildGeminiSolvePayload() {
+  const vars = {};
+  qa('#varsBody tr').forEach((row) => {
+    const name = row.querySelector('.var-name')?.value?.trim();
+    const valueText = row.querySelector('.var-value')?.value?.trim();
+    if (!name || !valueText) return;
+    const num = Number(valueText);
+    vars[name] = Number.isFinite(num) ? num : valueText;
+  });
+  return {
+    i1: sanitizeExpression(q('#i1').value.trim()),
+    i2: sanitizeExpression(q('#i2').value.trim()),
+    i3: sanitizeExpression(q('#i3').value.trim()),
+    main: sanitizeExpression(q('#mainEq').value.trim()),
+    vars,
+  };
+}
+
+function buildGeminiSolvePrompt(p) {
+  return `You are a precise math assistant. Evaluate the numeric value of the following expression using the given definitions and variables. Use the math semantics: exp(x) for e^x; integrate(f, a, b) means numeric integral of f(t) from a to b, where f is a lambda t -> ...; sumN(g, a, b) is finite integer sum from a to b inclusive. If the sum upper bound is the word SUM_MAX, treat it as 200. Return ONLY compact JSON with fields {"result": number}. No explanation.\n\nVariables (JSON):\n${JSON.stringify(p.vars)}\n\nDefinitions:\nI1(t) = ${p.i1}\nI2(t) = ${p.i2}\nI3(t) = ${p.i3}\n\nMain: ${p.main}`;
+}
+
+function parseGeminiSolveJson(text) {
+  // try to extract JSON from the response
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
 
 // Persist inputs
 function saveState() {
