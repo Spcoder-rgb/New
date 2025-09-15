@@ -1,0 +1,10 @@
+outlet_id,university,outlet_name,cold_storage_capacity_kg,shelf_space_sqm,holding_cost_rate_per_day
+1,University_1,University_1_Outlet_1,314,11.3,0.0021
+2,University_1,University_1_Outlet_2,428,17.0,0.0014
+3,University_1,University_1_Outlet_3,758,14.3,0.0027
+4,University_2,University_2_Outlet_1,230,14.7,0.0019
+5,University_2,University_2_Outlet_2,227,38.1,0.0039
+6,University_2,University_2_Outlet_3,758,31.0,0.0028
+7,University_3,University_3_Outlet_1,484,50.5,0.001
+8,University_3,University_3_Outlet_2,363,44.9,0.0024
+9,University_3,University_3_Outlet_3,359,20.8,0.0041
